@@ -8,9 +8,6 @@ import xarray as xr
 
 from typing import Union
 
-import logging
-log = logging.getLogger(__name__)
-
 def calc_delta_VV(dataset: xr.Dataset, inplace: bool = False) -> Union[None, xr.Dataset]:
     """
     Calculate change in VV amplitude between current time step and previous
