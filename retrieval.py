@@ -19,12 +19,9 @@ from spicy_snow.processing.snow_index import calc_delta_VV, calc_delta_cross_rat
     calc_delta_gamma, clip_delta_gamma_outlier, calc_snow_index, calc_snow_index_to_snow_depth
 
 def retrieval_from_parameters(dataset: xr.Dataset, 
-                              A: float, 
-                              B: float, 
-                              C: float, 
-                              wet_SI_thresh: float = 0, 
-                              freezing_snow_thresh: float = 2,
-                              wet_snow_thresh: float = -2):
+                              A: float = 2, 
+                              B: float = 0.5, 
+                              C: float = 0.44):
     """
     Retrieve snow depth with varied parameter set from an already pre-processed
     dataset.
