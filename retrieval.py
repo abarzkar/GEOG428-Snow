@@ -8,22 +8,11 @@ import pandas as pd
 import xarray as xr
 import shapely.geometry
 from typing import Tuple, Union, List
-import logging
 
 # Add main repo to path
 import sys
 from os.path import expanduser
 sys.path.append(expanduser('../'))
-
-# import functions for downloading
-from spicy_snow.download.sentinel1 import s1_img_search, hyp3_pipeline, download_hyp3, combine_s1_images
-from spicy_snow.download.forest_cover import download_fcf
-from spicy_snow.download.snow_cover import download_snow_cover
-
-# import functions for pre-processing
-from spicy_snow.processing.s1_preprocessing import merge_partial_s1_images, s1_orbit_averaging,\
-s1_clip_outliers, subset_s1_images, ims_water_mask, s1_incidence_angle_masking, merge_s1_subsets, \
-add_confidence_angle
 
 # import the functions for snow_index calculation
 from spicy_snow.processing.snow_index import calc_delta_VV, calc_delta_cross_ratio, \
@@ -32,9 +21,6 @@ from spicy_snow.processing.snow_index import calc_delta_VV, calc_delta_cross_rat
 # import the functions for wet snow flag
 from spicy_snow.processing.wet_snow import id_newly_frozen_snow, id_newly_wet_snow, \
     id_wet_negative_si, flag_wet_snow
-
-# setup root logger
-from spicy_snow.utils.spicy_logging import setup_logging
 
 def retrieve_snow_depth(area: shapely.geometry.Polygon, 
                         dates: Tuple[str, str], 
@@ -104,52 +90,7 @@ def retrieve_snow_depth(area: shapely.geometry.Polygon,
     if freezing_snow_thresh <= 0:
         log.warning(f"Running with refreeze threshold of {freezing_snow_thresh}. This value is negative but should be positive.")
     
-    ## Downloading Steps
-
-    # get asf_search search results
-    search_results = s1_img_search(area, dates)
-    log.info(f'Found {len(search_results)} results')
-
-    assert len(search_results) > 3, f"Need at least 4 images to run. Found {len(search_results)} \
-    using area: {area} and dates: {dates}."
-
-    # download s1 images into dataset ['s1'] variable name
-    jobs = hyp3_pipeline(search_results, job_name = job_name, existing_job_name = existing_job_name)
-    imgs = download_hyp3(jobs, area, outdir = join(work_dir, 'tmp'), clean = False)
-    ds = combine_s1_images(imgs)
-
-    # merge partial images together
-    ds = merge_partial_s1_images(ds)
-
-    # download IMS snow cover and add to dataset ['ims'] keyword
-    ds = download_snow_cover(ds, tmp_dir = join(work_dir, 'tmp'), clean = False)
-
-    # download fcf and add to dataset ['fcf'] keyword
-    ds = download_fcf(ds, join(work_dir, 'tmp', 'fcf.tif'))
-
-    ## Preprocessing Steps
-    log.info("Preprocessing Sentinel-1 images")
-
-    #TODO add water mask
-    # ds = ims_water_mask(ds)
-
-    # mask out outliers in incidence angle
-    ds = s1_incidence_angle_masking(ds)
     
-    # subset dataset by flight_dir and platform
-    dict_ds = subset_s1_images(ds)
-
-    for subset_name, subset_ds in dict_ds.items():
-        # average each orbit to overall mean
-        dict_ds[subset_name] = s1_orbit_averaging(subset_ds)
-        # clip outlier values of backscatter to overall mean
-        dict_ds[subset_name] = s1_clip_outliers(subset_ds)
-    
-    # recombine subsets
-    ds = merge_s1_subsets(dict_ds)
-
-    # calculate confidence interval
-    ds = add_confidence_angle(ds)
 
     ## Snow Index Steps
     log.info("Calculating snow index")
@@ -169,17 +110,6 @@ def retrieve_snow_depth(area: shapely.geometry.Polygon,
     # convert snow index to snow depth
     ds = calc_snow_index_to_snow_depth(ds, C = C)
 
-    ## Wet Snow Flags
-    log.info("Flag wet snow")
-    # find newly wet snow
-    ds = id_newly_wet_snow(ds, wet_thresh = wet_snow_thresh)
-    ds = id_wet_negative_si(ds, wet_SI_thresh = wet_SI_thresh)
-
-    # find newly frozen snow
-    ds = id_newly_frozen_snow(ds, freeze_thresh = freezing_snow_thresh)
-
-    # make wet_snow flag
-    ds = flag_wet_snow(ds)
 
     ds.attrs['param_A'] = A
     ds.attrs['param_B'] = B
