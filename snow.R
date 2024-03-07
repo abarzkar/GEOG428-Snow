@@ -1,11 +1,12 @@
 library(terra)
-r <- terra::rast("C:/Users/Arman/Downloads/LiDAR_derived_snow_depth_ACO_CHRL_2021_P1.tif")
-plot(r)
+r <- terra::rast("C:/Users/abarzkar/Downloads/LiDAR_derived_snow_depth_ACO_CHRL_2021_P1(1).tif")
+plot(r, xlim=c(383000,390000), ylim=c(5451000,5456000))
 
 ##round
-maker = function(x,y){rast("C:/Users/Arman/Downloads/LiDAR_derived_snow_depth_ACO_CHRL_2021_P1.tif")}
+maker = function(x,y){rast("C:/Users/abarzkar/Downloads/LiDAR_derived_snow_depth_ACO_CHRL_2021_P1(1).tif")}
 r2 = round(maker(14073,13096)/3)
-plot(r2)
+plot(r2, xlim=c(383000,390000), ylim=c(5451000,5456000))
+
 
 #polygonize
 p2 = as.polygons(r2)
