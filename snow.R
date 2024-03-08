@@ -7,7 +7,6 @@ maker = function(x,y){rast("C:/Users/abarzkar/Downloads/LiDAR_derived_snow_depth
 r2 = round(maker(14073,13096)/3)
 plot(r2, xlim=c(383000,390000), ylim=c(5451000,5456000))
 
-
 #polygonize
 p2 = as.polygons(r2)
 plot(p2)
