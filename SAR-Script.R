@@ -1,46 +1,34 @@
 library(terra)
-library(raster)
-library(sp)
 library(dplyr)
 
-#call in vv/vh SAR data with rast function
-vv.vh <- rast("D:/422/VH_VV.tif")
-ReSamp <- vv.vh
-values(ReSamp) <- 0
-#call in lidar
-lidar.SD <- rast("D:/422/LiDAR_derived_snow_depth_ACO_CHRL_2021_P1.tif")
 
-#call in points that represent the center of each SAR pixel 
-p <- vect("D:/422/SAR-Points2.shp")
+Lidar <- rast("D:/422/LiDAR_derived_snow_depth_ACO_CHRL_2021_P1.tif")
 
-#extract the sAR values from under the points
-backscatter<- as.data.frame(extract(vv.vh, p, cells=TRUE, xy=TRUE))
+RCM <- rast("D:/422/HV.HH-Clipped-20210308.tif")
 
-#resample the LiDAR snow depth to the res of the SAR data (10m)
-r <- resample(lidar.SD, ReSamp)
-
-#extract the snow depth values from under the sAR pixels via the points
-snowdepth <- as.data.frame(extract(r, p, cells=TRUE, xy=TRUE))
+Lidar <- project(Lidar, RCM)
 
 
+Lidar50 <- resample(Lidar, RCM, method="bilinear")
+plot(Lidar50)
+writeRaster(Lidar50, "D:/422/LiDAR_50.tif", overwrite=TRUE)
+points <- vect("D:/422/SAR-Points/SAR-Points3.shp")
 
-#join the backscatter and snow depth dataframes
-SAR.Snow <- bind_cols(backscatter, snowdepth)
-SAR.Snow <- merge(backscatter, snowdepth, by=c("x", "y"))
+sd <- as.data.frame(extract(Lidar50, points))
+names(sd) <- c("ID", "Snowdepth")
+head(sd)
 
-SAR.Snow <- select(SAR.Snow, c("VH_VV", "LiDAR_derived_snow_depth_ACO_CHRL_2021_P1"))
-names(SAR.Snow) <- c("VH_VV", "SnowDepth")
 
-plot(SAR.Snow$VH_VV, SAR.Snow$SnowDepth)
-SAR.Snow <- na.omit(SAR.Snow)
-SAR.Snow <- subset(SAR.Snow, SnowDepth > 0)
+bs <- as.data.frame(extract(RCM, points))
+names(bs) <- c("ID", "Backscatter")
+head(bs)
 
-Snow10.20 <- subset(SAR.Snow, SnowDepth < 0.5)
-plot(Snow10.20$VH_VV)
-plot(Snow10.20$SnowDepth)
+df <- bind_cols(sd, bs)
+SAR_Snow <- dplyr::select(df, "Snowdepth", "Backscatter")
 
-Snow10.20$VH_VV <- Snow10.20$VH_VV/(max(Snow10.20$VH_VV))
-Snow10.20$SnowDepth <- Snow10.20$SnowDepth/(max(Snow10.20$SnowDepth))
+SAR_Snow <- dplyr::filter(SAR_Snow, Backscatter<25)
+SAR_Snow <- dplyr::filter(SAR_Snow, Backscatter>0)
+SAR_Snow <- dplyr::filter(SAR_Snow, Snowdepth>0.3)
+SAR_Snow <- dplyr::filter(SAR_Snow, Snowdepth<10)
 
-T<- lm(VH_VV ~ SnowDepth, Snow10.20)
-plot(Snow10.20)
+plot(SAR_Snow$Snowdepth, SAR_Snow$Backscatter)
